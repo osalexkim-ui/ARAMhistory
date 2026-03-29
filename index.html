@@ -33,7 +33,7 @@
   .header-line span:last-child{background:linear-gradient(90deg,var(--gold-dk),transparent);}
 
   nav{position:sticky;top:0;z-index:100;background:rgba(1,10,19,.95);backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;overflow-x:auto;justify-content:center;}
+    border-bottom:1px solid var(--border);padding:0;display:flex;gap:0;overflow-x:auto;}
   nav::-webkit-scrollbar{height:3px;} nav::-webkit-scrollbar-thumb{background:var(--gold-dk);}
   .tab{padding:14px 18px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;
     letter-spacing:.1em;text-transform:uppercase;color:var(--text);cursor:pointer;
@@ -662,9 +662,10 @@ async function init() {
     if (!resp.ok) throw new Error('lol_dataset.csv 파일을 찾을 수 없습니다.');
     const enriched = processData(parseCSV(await resp.text()));
 
-    document.getElementById('nav').innerHTML = TABS.map((t,i)=>
-      `<button class="tab ${i===0?'active':''}" onclick="switchTab('${t.id}',this)">${t.label}</button>`
-    ).join('');
+    document.getElementById('nav').innerHTML =
+      `<div style="display:flex;margin:0 auto">${TABS.map((t,i)=>
+        `<button class="tab ${i===0?'active':''}" onclick="switchTab('${t.id}',this)">${t.label}</button>`
+      ).join('')}</div>`;
 
     const builders = [
       ()=>buildSection1(enriched), ()=>buildSection4(enriched),
