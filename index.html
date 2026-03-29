@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>내전 전적 대시보드</title>
+<title>칼부림 깎는 노인</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -33,7 +33,7 @@
   .header-line span:last-child{background:linear-gradient(90deg,var(--gold-dk),transparent);}
 
   nav{position:sticky;top:0;z-index:100;background:rgba(1,10,19,.95);backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;overflow-x:auto;}
+    border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;overflow-x:auto;justify-content:center;}
   nav::-webkit-scrollbar{height:3px;} nav::-webkit-scrollbar-thumb{background:var(--gold-dk);}
   .tab{padding:14px 18px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;
     letter-spacing:.1em;text-transform:uppercase;color:var(--text);cursor:pointer;
@@ -120,9 +120,36 @@
   .stat-box .sv{font-size:22px;font-weight:700;color:var(--gold);}
   .stat-box .sl{font-size:11px;color:var(--text);text-transform:uppercase;letter-spacing:.1em;margin-top:2px;}
 
+
+  .sort-btn{padding:6px 14px;background:var(--bg3);border:1px solid var(--border);
+    border-radius:4px;color:var(--text);font-family:'Rajdhani',sans-serif;
+    font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+  .sort-btn:hover{border-color:var(--gold-dk);color:var(--gold-lt);}
+  .sort-btn.active{background:rgba(200,155,60,.12);border-color:var(--gold);color:var(--gold);}
   .empty{color:var(--text);font-size:13px;text-align:center;padding:24px;}
   ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-track{background:var(--bg);}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+
+  /* ── Triplet styles ── */
+  .triplet-controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:24px;align-items:center;}
+  .triplet-controls label{font-size:12px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;}
+  .triplet-controls select{background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+    color:var(--text-lt);padding:6px 10px;font-family:'Rajdhani',sans-serif;font-size:13px;cursor:pointer;}
+  .triplet-controls select:focus{outline:none;border-color:var(--gold);}
+
+  .viz-tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border);}
+  .viz-tab{padding:10px 18px;font-size:13px;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--text);cursor:pointer;
+    border-bottom:2px solid transparent;transition:all .2s;background:none;
+    border-top:none;border-left:none;border-right:none;}
+  .viz-tab:hover{color:var(--gold-lt);}
+  .viz-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+  .viz-panel{display:none;} .viz-panel.active{display:block;}
+
+
+
 
   #loading{position:fixed;inset:0;z-index:999;background:var(--bg);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
@@ -130,6 +157,7 @@
     border-radius:50%;animation:spin .8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg)}}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 </head>
 <body>
 
@@ -139,7 +167,7 @@
 </div>
 
 <header>
-  <h1>⚔ 내전 전적 대시보드</h1>
+  <h1>⚔ 칼부림 깎는 노인</h1>
   <div class="header-line"><span></span><i>✦</i><span></span></div>
   <p id="header-meta">Loading…</p>
 </header>
@@ -258,52 +286,64 @@ function buildSection2(enriched) {
   const total = enriched.length;
   const data = Object.entries(byChamp)
     .filter(([n])=>n&&n!=='null')
-    .map(([name,rows])=>({ name, picks:rows.length, pr:rows.length/total }))
-    .sort((a,b)=>b.picks-a.picks);
-  const maxP = data[0]?.picks||1;
+    .map(([name,rows])=>({
+      name, picks:rows.length, pr:rows.length/total,
+      wr:winRate(rows), wins:rows.filter(r=>r.did_win).length
+    }));
 
-  return `<div class="rank-list">${data.map((d,i)=>`
-    <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
-      <div class="rank-pos">${i+1}</div>
-      ${champImg(d.name)}
-      <div>
-        <div class="rank-name">${d.name}</div>
-        <div class="rank-meta">픽률 ${pct(d.pr)}</div>
-      </div>
-      <div>
-        <div class="rank-stat">${d.picks}</div>
-        <div class="rank-sub">픽 수</div>
-      </div>
-      <div class="bar-wrap"><div class="bar-fill" style="width:${(d.picks/maxP*100).toFixed(1)}%"></div></div>
-    </div>`).join('')}</div>`;
+  // Store data on window so the sort buttons can access it
+  window._champData = data;
+
+  return `
+    <div style="display:flex;gap:8px;margin-bottom:18px;align-items:center">
+      <span style="font-size:12px;color:var(--text);letter-spacing:.08em;text-transform:uppercase">정렬 기준:</span>
+      <button id="sort-wr"  class="sort-btn active" onclick="sortChampions('wr')">승률</button>
+      <button id="sort-pr"  class="sort-btn"        onclick="sortChampions('pr')">픽률</button>
+    </div>
+    <div id="champ-list"></div>`;
 }
 
-// ══════════════════════════════════════════
-// SECTION 3 – Champion win rate
-// ══════════════════════════════════════════
-function buildSection3(enriched) {
-  const byChamp = groupBy(enriched, 'champion');
-  const data = Object.entries(byChamp)
-    .filter(([n])=>n&&n!=='null')
-    .map(([name,rows])=>({ name, wr:winRate(rows), picks:rows.length, wins:rows.filter(r=>r.did_win).length }))
-    .sort((a,b)=>b.wr-a.wr||b.picks-a.picks);
-  const maxWR = Math.max(...data.map(d=>d.wr));
+function sortChampions(by) {
+  const data = window._champData;
+  if (!data) return;
 
-  return `<div class="rank-list">${data.map((d,i)=>`
-    <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
-      <div class="rank-pos">${i+1}</div>
-      ${champImg(d.name)}
-      <div>
-        <div class="rank-name">${d.name}</div>
-        <div class="rank-meta">${d.wins}승 ${d.picks-d.wins}패 · ${d.picks}게임</div>
-      </div>
-      <div>
-        <div class="rank-stat">${pct(d.wr)}</div>
-        <div class="rank-sub">승률</div>
-      </div>
-      <div class="bar-wrap"><div class="bar-fill win" style="width:${(d.wr/maxWR*100).toFixed(1)}%"></div></div>
-    </div>`).join('')}</div>`;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sort-' + by).classList.add('active');
+
+  const sorted = [...data].sort((a,b) => by==='wr'
+    ? b.wr - a.wr || b.picks - a.picks
+    : b.picks - a.picks || b.wr - a.wr);
+
+  const maxWR   = Math.max(...sorted.map(d=>d.wr));
+  const maxPick = Math.max(...sorted.map(d=>d.picks));
+  const barMax  = by === 'wr' ? maxWR : maxPick;
+
+  document.getElementById('champ-list').innerHTML =
+    `<div class="rank-list">${sorted.map((d,i)=>`
+      <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr auto auto">
+        <div class="rank-pos">${i+1}</div>
+        ${champImg(d.name)}
+        <div>
+          <div class="rank-name">${d.name}</div>
+          <div class="rank-meta">${d.wins}승 ${d.picks-d.wins}패 · ${d.picks}게임</div>
+        </div>
+        <div style="text-align:right;min-width:80px">
+          <div class="rank-stat" style="font-size:15px;color:${by==='wr'?'var(--gold)':'var(--text-lt)'}">${pct(d.wr)}</div>
+          <div class="rank-sub">승률</div>
+        </div>
+        <div style="text-align:right;min-width:70px;margin-left:16px">
+          <div class="rank-stat" style="font-size:15px;color:${by==='pr'?'var(--gold)':'var(--text-lt)'}">${d.picks}픽</div>
+          <div class="rank-sub">${pct(d.pr)}</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-fill ${by==='wr'?'win':''}" style="width:${((by==='wr'?d.wr:d.picks)/barMax*100).toFixed(1)}%"></div>
+        </div>
+      </div>`).join('')}
+    </div>`;
 }
+
+// buildSection3 merged into buildSection2 above — kept as stub for builder array compatibility
+function buildSection3(enriched) { return ''; }
 
 // ══════════════════════════════════════════
 // SECTION 4 – Per-player teammate win rate
@@ -330,7 +370,7 @@ function buildSection4(enriched) {
   const panels = players.map((p,pi) => {
     const tms = getTeammateWRs(p);
     const maxTmWR = tms.length ? Math.max(...tms.map(t=>t.wr)) : 1;
-    return `<div class="player-content ${pi===0?'active':''}" id="s4-${pi}">
+    return `<div class="player-content ${pi===0?'active':''}" id="s2-${pi}">
       ${tms.length===0 ? `<div class="empty">팀원 데이터 없음</div>` :
         `<div class="rank-list">${tms.map((t,i)=>`
           <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
@@ -350,7 +390,7 @@ function buildSection4(enriched) {
   }).join('');
 
   const btns = players.map((p,i)=>
-    `<button class="player-btn ${i===0?'active':''}" onclick="switchPlayer('s4',${i},this)">
+    `<button class="player-btn ${i===0?'active':''}" onclick="switchPlayer('s2',${i},this)">
       ${playerImg(p,'sm')} ${p}
     </button>`).join('');
 
@@ -391,7 +431,7 @@ function buildSection5(enriched) {
         <span class="mini-sub">${pct(d.pr)}</span>
       </div>`).join('')}</div>`;
 
-    return `<div class="player-content ${pi===0?'active':''}" id="s5-${pi}">
+    return `<div class="player-content ${pi===0?'active':''}" id="s4-${pi}">
       <div class="two-col">
         <div class="sub-panel"><h3>챔피언별 승률</h3>${data.length?byWR:'<div class="empty">데이터 없음</div>'}</div>
         <div class="sub-panel"><h3>챔피언별 픽률</h3>${data.length?byPick:'<div class="empty">데이터 없음</div>'}</div>
@@ -400,7 +440,7 @@ function buildSection5(enriched) {
   }).join('');
 
   const btns = players.map((p,i)=>
-    `<button class="player-btn ${i===0?'active':''}" onclick="switchPlayer('s5',${i},this)">
+    `<button class="player-btn ${i===0?'active':''}" onclick="switchPlayer('s4',${i},this)">
       ${playerImg(p,'sm')} ${p}
     </button>`).join('');
 
@@ -465,6 +505,121 @@ function buildSection7(enriched) {
     </div>`).join('')}</div>`;
 }
 
+
+// ══════════════════════════════════════════
+// TRIPLET DATA HELPER
+// ══════════════════════════════════════════
+function computeCombos(enriched, size) {
+  // Group by game+team
+  const gameTeams = {};
+  enriched.forEach(r => {
+    const key = r.source_file + '|' + r.team_id;
+    if (!gameTeams[key]) gameTeams[key] = { did_win: r.did_win, members: [] };
+    gameTeams[key].members.push(r.summoner_name);
+  });
+
+  const stats = {};
+  Object.values(gameTeams).forEach(({ did_win, members }) => {
+    const sorted = [...new Set(members)].sort();
+    const combos = getCombinations(sorted, size);
+    combos.forEach(combo => {
+      const key = combo.join(' + ');
+      if (!stats[key]) stats[key] = { wins: 0, games: 0, members: combo };
+      stats[key].games++;
+      if (did_win) stats[key].wins++;
+    });
+  });
+
+  return Object.entries(stats).map(([key, s]) => ({
+    key, members: s.members,
+    wr: s.wins / s.games, wins: s.wins, games: s.games
+  }));
+}
+
+function getCombinations(arr, k) {
+  if (k === 1) return arr.map(x => [x]);
+  const result = [];
+  for (let i = 0; i <= arr.length - k; i++) {
+    const rest = getCombinations(arr.slice(i + 1), k - 1);
+    rest.forEach(r => result.push([arr[i], ...r]));
+  }
+  return result;
+}
+
+// ══════════════════════════════════════════
+// SECTION 8 – Triplet / Pair analysis
+// ══════════════════════════════════════════
+function buildSection8(enriched) {
+  return `
+    <div class="triplet-controls">
+      <div>
+        <label>조합 크기</label><br>
+        <select id="combo-size" onchange="renderTripletViz(window._enriched)">
+          <option value="3">3인 조합 (Triplet)</option>
+          <option value="2">2인 조합 (Pair)</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div class="viz-tabs">
+      <button class="viz-tab active" onclick="switchViz('table',this)">랭킹 테이블</button>
+
+    </div>
+
+    <div class="viz-panel active" id="viz-table">
+      <div id="triplet-table"></div>
+    </div>
+
+
+  `;
+}
+
+function switchViz(id, btn) {
+  document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.viz-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('viz-' + id).classList.add('active');
+  renderTripletViz(window._enriched);
+}
+
+function renderTripletViz(enriched) {
+  if (!enriched) return;
+  const size    = +document.getElementById('combo-size').value;
+  const combos  = computeCombos(enriched, size);
+  const activeV = document.querySelector('.viz-tab.active')?.textContent;
+
+  if (activeV === '랭킹 테이블') renderTripletTable(combos);
+
+}
+
+// ── Table ──────────────────────────────────────────────────
+function renderTripletTable(combos) {
+  const sorted = [...combos].sort((a, b) => b.games - a.games || b.wr - a.wr);
+  const maxWR = Math.max(...sorted.map(c => c.wr));
+  document.getElementById('triplet-table').innerHTML = `
+    <div class="rank-list">${sorted.map((c, i) => `
+      <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 1fr 110px">
+        <div class="rank-pos">${i + 1}</div>
+        <div>
+          <div class="rank-name" style="display:flex;gap:6px;flex-wrap:wrap">
+            ${c.members.map(m => `<span style="display:inline-flex;align-items:center;gap:4px">
+              ${playerImg(m,'sm')}<span>${m}</span>
+            </span>`).join('<span style="color:var(--gold-dk);padding:0 2px">+</span>')}
+          </div>
+          <div class="rank-meta">${c.wins}승 ${c.games - c.wins}패 · ${c.games}게임</div>
+        </div>
+        <div>
+          <div class="rank-stat">${pct(c.wr)}</div>
+          <div class="rank-sub">승률</div>
+        </div>
+        <div class="bar-wrap"><div class="bar-fill win" style="width:${(c.wr / maxWR * 100).toFixed(1)}%"></div></div>
+      </div>`).join('')}
+    </div>`;
+}
+
+
+
 // ══════════════════════════════════════════
 // UI HELPERS
 // ══════════════════════════════════════════
@@ -487,17 +642,18 @@ function switchTab(id, btn) {
 // ══════════════════════════════════════════
 const TABS = [
   {id:'s1',label:'플레이어 승률'},
-  {id:'s2',label:'챔피언 픽률'},
-  {id:'s3',label:'챔피언 승률'},
-  {id:'s4',label:'팀원별 승률'},
-  {id:'s5',label:'플레이어 챔피언'},
+  {id:'s2',label:'팀원별 승률'},
+  {id:'s3',label:'조합 분석 ★'},
+  {id:'s4',label:'플레이어 챔피언'},
+  {id:'s5',label:'챔피언'},
   {id:'s6',label:'KDA 랭킹'},
   {id:'s7',label:'챔피언 다양성'},
 ];
 const DESCRIPTIONS = [
-  '플레이어 승률 순위','챔피언 픽 수 순위','챔피언 승률 순위',
-  '플레이어별 팀원 승률 순위','플레이어별 챔피언 승률 · 픽률',
-  '플레이어 KDA 순위','플레이어별 플레이 챔피언 수',
+  '플레이어 승률 순위','플레이어별 팀원 승률 순위',
+  '2인 · 3인 조합 승률 분석','플레이어별 챔피언 승률 · 픽률',
+  '챔피언 승률 · 픽률 순위','플레이어 KDA 순위',
+  '플레이어별 플레이 챔피언 수',
 ];
 
 async function init() {
@@ -511,9 +667,9 @@ async function init() {
     ).join('');
 
     const builders = [
-      ()=>buildSection1(enriched), ()=>buildSection2(enriched),
-      ()=>buildSection3(enriched), ()=>buildSection4(enriched),
-      ()=>buildSection5(enriched), ()=>buildSection6(enriched),
+      ()=>buildSection1(enriched), ()=>buildSection4(enriched),
+      ()=>buildSection8(enriched), ()=>buildSection5(enriched),
+      ()=>buildSection2(enriched), ()=>buildSection6(enriched),
       ()=>buildSection7(enriched),
     ];
 
@@ -527,6 +683,9 @@ async function init() {
     const playerCount = [...new Set(enriched.map(r=>r.summoner_name))].length;
     document.getElementById('header-meta').textContent =
       `${gameCount}게임 · ${playerCount}명 · ${enriched.length}개 전적`;
+    window._enriched = enriched;
+    // Initial triplet render after DOM is set
+    setTimeout(() => { sortChampions('wr'); renderTripletViz(enriched); }, 50);
     document.getElementById('loading').style.display='none';
 
   } catch(e) {
