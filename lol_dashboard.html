@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내전 전적 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold:#c89b3c; --gold-lt:#f0c070; --gold-dk:#785a28;
+    --bg:#010a13; --bg2:#0a1628; --bg3:#0d1f3c; --panel:#071020;
+    --border:#1e3a5f; --blue:#0ac8b9; --blue-dk:#005a82;
+    --red:#c83e3e; --green:#28c87a;
+    --text:#a0b4c8; --text-lt:#cddcec; --win:#28c87a; --lose:#c83e3e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text-lt);font-family:'Rajdhani',sans-serif;font-size:15px;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;z-index:0;background:
+    radial-gradient(ellipse 80% 50% at 20% 10%,rgba(10,40,80,.5) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 90%,rgba(200,155,60,.08) 0%,transparent 50%),
+    repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(14,35,65,.15) 60px,rgba(14,35,65,.15) 61px),
+    repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(14,35,65,.15) 60px,rgba(14,35,65,.15) 61px);
+    pointer-events:none;}
+
+  header{position:relative;z-index:10;text-align:center;padding:48px 24px 32px;
+    border-bottom:1px solid var(--gold-dk);
+    background:linear-gradient(180deg,rgba(200,155,60,.06) 0%,transparent 100%);}
+  header h1{font-family:'Cinzel',serif;font-size:clamp(22px,4vw,42px);font-weight:700;
+    color:var(--gold-lt);letter-spacing:.12em;text-shadow:0 0 30px rgba(200,155,60,.4);}
+  header p{margin-top:8px;color:var(--text);font-size:13px;letter-spacing:.2em;text-transform:uppercase;}
+  .header-line{display:flex;align-items:center;justify-content:center;gap:16px;margin:16px auto 0;max-width:400px;}
+  .header-line span{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dk));}
+  .header-line span:last-child{background:linear-gradient(90deg,var(--gold-dk),transparent);}
+
+  nav{position:sticky;top:0;z-index:100;background:rgba(1,10,19,.95);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;overflow-x:auto;}
+  nav::-webkit-scrollbar{height:3px;} nav::-webkit-scrollbar-thumb{background:var(--gold-dk);}
+  .tab{padding:14px 18px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--text);cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;
+    background:none;border-top:none;border-left:none;border-right:none;}
+  .tab:hover{color:var(--gold-lt);} .tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+  main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:32px 24px 60px;}
+  .section{display:none;animation:fadeIn .3s ease;} .section.active{display:block;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  .sec-title{font-family:'Cinzel',serif;font-size:20px;color:var(--gold-lt);
+    margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid var(--gold-dk);
+    display:flex;align-items:center;gap:12px;}
+  .sec-title .num{background:var(--gold);color:var(--bg);width:28px;height:28px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+
+  /* ── Avatar images ── */
+  .avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;
+    border:2px solid var(--gold-dk);flex-shrink:0;background:var(--bg3);}
+  .avatar.champ{border-radius:6px;border-color:var(--border);}
+  .avatar-sm{width:28px;height:28px;border-radius:50%;object-fit:cover;
+    border:1px solid var(--gold-dk);flex-shrink:0;background:var(--bg3);}
+  .avatar-sm.champ{border-radius:4px;border-color:var(--border);}
+
+  /* ── Rank card ── */
+  .rank-list{display:flex;flex-direction:column;gap:8px;}
+  .rank-card{display:grid;background:linear-gradient(135deg,var(--bg2) 0%,var(--bg3) 100%);
+    border:1px solid var(--border);border-radius:6px;padding:12px 16px;
+    align-items:center;gap:0 12px;
+    transition:border-color .2s,transform .15s;position:relative;overflow:hidden;}
+  .rank-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:var(--gold-dk);transition:background .2s;}
+  .rank-card:hover{border-color:var(--gold-dk);transform:translateX(3px);}
+  .rank-card:hover::before{background:var(--gold);}
+  .rank-card.r1::before{background:var(--gold);}
+  .rank-card.r2::before{background:#c0c0c0;}
+  .rank-card.r3::before{background:#cd7f32;}
+
+  .rank-pos{font-family:'Cinzel',serif;font-size:20px;font-weight:700;
+    color:var(--gold-dk);min-width:36px;text-align:center;}
+  .rank-card.r1 .rank-pos{color:var(--gold);text-shadow:0 0 12px rgba(200,155,60,.5);}
+  .rank-card.r2 .rank-pos{color:#c0c0c0;}
+  .rank-card.r3 .rank-pos{color:#cd7f32;}
+  .rank-name{font-size:15px;font-weight:600;color:var(--text-lt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rank-meta{font-size:12px;color:var(--text);margin-top:2px;}
+  .rank-stat{font-size:18px;font-weight:700;color:var(--gold);text-align:right;}
+  .rank-sub{font-size:11px;color:var(--text);text-align:right;margin-top:1px;}
+  .bar-wrap{grid-column:1/-1;margin-top:8px;background:rgba(0,0,0,.3);border-radius:2px;height:4px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold-dk),var(--gold));transition:width 1s ease;}
+  .bar-fill.win{background:linear-gradient(90deg,#1a7a4a,var(--green));}
+  .bar-fill.kda{background:linear-gradient(90deg,var(--blue-dk),var(--blue));}
+
+  /* ── Player select buttons ── */
+  .player-select{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;}
+  .player-btn{padding:6px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+    color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;
+    cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px;}
+  .player-btn:hover{border-color:var(--gold-dk);color:var(--gold-lt);}
+  .player-btn.active{background:rgba(200,155,60,.1);border-color:var(--gold);color:var(--gold);}
+  .player-btn img{width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid var(--gold-dk);}
+
+  .player-content{display:none;} .player-content.active{display:block;animation:fadeIn .25s ease;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr;}}
+  .sub-panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;}
+  .sub-panel h3{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);margin-bottom:16px;
+    padding-bottom:8px;border-bottom:1px solid var(--border);letter-spacing:.08em;}
+
+  /* ── Mini list (sub-panels) ── */
+  .mini-list{display:flex;flex-direction:column;gap:6px;}
+  .mini-row{display:flex;align-items:center;gap:8px;padding:7px 10px;
+    background:rgba(0,0,0,.2);border-radius:4px;border-left:2px solid var(--border);}
+  .mini-row.r1{border-left-color:var(--gold);}
+  .mini-row.r2{border-left-color:#c0c0c0;}
+  .mini-row.r3{border-left-color:#cd7f32;}
+  .mini-pos{font-size:11px;color:var(--text);min-width:16px;text-align:center;}
+  .mini-name{flex:1;font-size:14px;font-weight:600;color:var(--text-lt);}
+  .mini-val{font-size:14px;font-weight:700;color:var(--gold);}
+  .mini-sub{font-size:11px;color:var(--text);}
+
+  .stat-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:24px;}
+  .stat-box{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;text-align:center;}
+  .stat-box .sv{font-size:22px;font-weight:700;color:var(--gold);}
+  .stat-box .sl{font-size:11px;color:var(--text);text-transform:uppercase;letter-spacing:.1em;margin-top:2px;}
+
+  .empty{color:var(--text);font-size:13px;text-align:center;padding:24px;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+  #loading{position:fixed;inset:0;z-index:999;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+  .spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--gold);
+    border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="color:var(--gold);font-family:'Cinzel',serif;letter-spacing:.1em;">데이터 로딩 중…</div>
+</div>
+
+<header>
+  <h1>⚔ 내전 전적 대시보드</h1>
+  <div class="header-line"><span></span><i>✦</i><span></span></div>
+  <p id="header-meta">Loading…</p>
+</header>
+
+<nav id="nav"></nav>
+<main><div id="sections"></div></main>
+
+<script>
+// ══════════════════════════════════════════
+// IMAGE HELPERS
+// ══════════════════════════════════════════
+
+// Build champion filename: Korean_English.webp
+// champMap is built from CSV data: english → korean
+let champMap = {}; // populated after CSV load
+
+function champImg(english, cls='champ') {
+  if (!english || english === 'null') return `<span style="width:40px;height:40px;display:inline-block"></span>`;
+  const korean = champMap[english] || '';
+  const fname = korean ? `${korean}_${english}.webp` : `${english}.webp`;
+  const size = cls.includes('sm') ? 'avatar-sm' : 'avatar';
+  return `<img src="champions/${fname}" class="${size} ${cls}" alt="${english}" onerror="this.style.visibility='hidden'">`;
+}
+
+function playerImg(name, cls='') {
+  const size = cls.includes('sm') ? 'avatar-sm' : 'avatar';
+  return `<img src="players/${name}.webp" class="${size} ${cls}" alt="${name}" onerror="this.style.visibility='hidden'">`;
+}
+
+// ══════════════════════════════════════════
+// CSV PARSER
+// ══════════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].replace(/^\uFEFF/,'').split(',').map(h=>h.trim());
+  return lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const row = {};
+    headers.forEach((h,j) => row[h] = (vals[j]||'').trim());
+    return row;
+  }).filter(r => r.summoner_name);
+}
+
+// ══════════════════════════════════════════
+// DATA PROCESSING
+// ══════════════════════════════════════════
+function processData(rows) {
+  // Build champion map
+  rows.forEach(r => {
+    if (r.champion && r.champion !== 'null' && r.champion_korean)
+      champMap[r.champion] = r.champion_korean;
+  });
+
+  const games = {};
+  rows.forEach(r => {
+    if (!games[r.source_file]) games[r.source_file] = { result: r.result };
+  });
+
+  return rows.map(r => {
+    const team1Wins = games[r.source_file].result === 'WIN';
+    const did_win = r.team_id === '1' ? team1Wins : !team1Wins;
+    return { ...r, did_win, kills:+r.kills, deaths:+r.deaths, assists:+r.assists };
+  });
+}
+
+function groupBy(arr, key) {
+  const m = {};
+  arr.forEach(r => { if (!m[r[key]]) m[r[key]]=[]; m[r[key]].push(r); });
+  return m;
+}
+function winRate(rows) { return rows.length ? rows.filter(r=>r.did_win).length/rows.length : 0; }
+function pct(v) { return (v*100).toFixed(1)+'%'; }
+function fix2(v) { return (+v).toFixed(2); }
+function rankCls(i) { return i<3?`r${i+1}`:''; }
+
+// ══════════════════════════════════════════
+// SECTION 1 – Player win rate
+// ══════════════════════════════════════════
+function buildSection1(enriched) {
+  const byPlayer = groupBy(enriched, 'summoner_name');
+  const data = Object.entries(byPlayer).map(([name,rows]) => ({
+    name, wr:winRate(rows), games:rows.length, wins:rows.filter(r=>r.did_win).length
+  })).sort((a,b)=>b.wr-a.wr||b.games-a.games);
+  const maxWR = Math.max(...data.map(d=>d.wr));
+
+  const gameCount = [...new Set(enriched.map(r=>r.source_file))].length;
+  const strip = `<div class="stat-strip">
+    <div class="stat-box"><div class="sv">${Object.keys(byPlayer).length}</div><div class="sl">총 플레이어</div></div>
+    <div class="stat-box"><div class="sv">${gameCount}</div><div class="sl">총 게임</div></div>
+    <div class="stat-box"><div class="sv">${pct(enriched.filter(r=>r.did_win).length/enriched.length)}</div><div class="sl">전체 승률</div></div>
+  </div>`;
+
+  const list = `<div class="rank-list">${data.map((d,i)=>`
+    <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
+      <div class="rank-pos">${i+1}</div>
+      ${playerImg(d.name)}
+      <div>
+        <div class="rank-name">${d.name}</div>
+        <div class="rank-meta">${d.wins}승 ${d.games-d.wins}패 · ${d.games}게임</div>
+      </div>
+      <div>
+        <div class="rank-stat">${pct(d.wr)}</div>
+        <div class="rank-sub">승률</div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill win" style="width:${(d.wr/maxWR*100).toFixed(1)}%"></div></div>
+    </div>`).join('')}</div>`;
+
+  return strip + list;
+}
+
+// ══════════════════════════════════════════
+// SECTION 2 – Champion pick rate
+// ══════════════════════════════════════════
+function buildSection2(enriched) {
+  const byChamp = groupBy(enriched, 'champion');
+  const total = enriched.length;
+  const data = Object.entries(byChamp)
+    .filter(([n])=>n&&n!=='null')
+    .map(([name,rows])=>({ name, picks:rows.length, pr:rows.length/total }))
+    .sort((a,b)=>b.picks-a.picks);
+  const maxP = data[0]?.picks||1;
+
+  return `<div class="rank-list">${data.map((d,i)=>`
+    <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
+      <div class="rank-pos">${i+1}</div>
+      ${champImg(d.name)}
+      <div>
+        <div class="rank-name">${d.name}</div>
+        <div class="rank-meta">픽률 ${pct(d.pr)}</div>
+      </div>
+      <div>
+        <div class="rank-stat">${d.picks}</div>
+        <div class="rank-sub">픽 수</div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${(d.picks/maxP*100).toFixed(1)}%"></div></div>
+    </div>`).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// SECTION 3 – Champion win rate
+// ══════════════════════════════════════════
+function buildSection3(enriched) {
+  const byChamp = groupBy(enriched, 'champion');
+  const data = Object.entries(byChamp)
+    .filter(([n])=>n&&n!=='null')
+    .map(([name,rows])=>({ name, wr:winRate(rows), picks:rows.length, wins:rows.filter(r=>r.did_win).length }))
+    .sort((a,b)=>b.wr-a.wr||b.picks-a.picks);
+  const maxWR = Math.max(...data.map(d=>d.wr));
+
+  return `<div class="rank-list">${data.map((d,i)=>`
+    <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
+      <div class="rank-pos">${i+1}</div>
+      ${champImg(d.name)}
+      <div>
+        <div class="rank-name">${d.name}</div>
+        <div class="rank-meta">${d.wins}승 ${d.picks-d.wins}패 · ${d.picks}게임</div>
+      </div>
+      <div>
+        <div class="rank-stat">${pct(d.wr)}</div>
+        <div class="rank-sub">승률</div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill win" style="width:${(d.wr/maxWR*100).toFixed(1)}%"></div></div>
+    </div>`).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// SECTION 4 – Per-player teammate win rate
+// ══════════════════════════════════════════
+function buildSection4(enriched) {
+  const players = [...new Set(enriched.map(r=>r.summoner_name))].sort();
+
+  function getTeammateWRs(player) {
+    const myGames = {};
+    enriched.forEach(r => { if (r.summoner_name===player) myGames[r.source_file+'_'+r.team_id]=r.did_win; });
+    const tm = {};
+    enriched.forEach(r => {
+      const key = r.source_file+'_'+r.team_id;
+      if (r.summoner_name!==player && myGames[key]!==undefined) {
+        if (!tm[r.summoner_name]) tm[r.summoner_name]={wins:0,games:0};
+        tm[r.summoner_name].games++;
+        if (myGames[key]) tm[r.summoner_name].wins++;
+      }
+    });
+    return Object.entries(tm).map(([name,s])=>({name,wr:s.wins/s.games,wins:s.wins,games:s.games}))
+      .sort((a,b)=>b.wr-a.wr||b.games-a.games);
+  }
+
+  const panels = players.map((p,pi) => {
+    const tms = getTeammateWRs(p);
+    const maxTmWR = tms.length ? Math.max(...tms.map(t=>t.wr)) : 1;
+    return `<div class="player-content ${pi===0?'active':''}" id="s4-${pi}">
+      ${tms.length===0 ? `<div class="empty">팀원 데이터 없음</div>` :
+        `<div class="rank-list">${tms.map((t,i)=>`
+          <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
+            <div class="rank-pos">${i+1}</div>
+            ${playerImg(t.name)}
+            <div>
+              <div class="rank-name">${t.name}</div>
+              <div class="rank-meta">${t.wins}승 ${t.games-t.wins}패 · 함께 ${t.games}게임</div>
+            </div>
+            <div>
+              <div class="rank-stat">${pct(t.wr)}</div>
+              <div class="rank-sub">함께 승률</div>
+            </div>
+            <div class="bar-wrap"><div class="bar-fill win" style="width:${(t.wr/maxTmWR*100).toFixed(1)}%"></div></div>
+          </div>`).join('')}</div>`}
+    </div>`;
+  }).join('');
+
+  const btns = players.map((p,i)=>
+    `<button class="player-btn ${i===0?'active':''}" onclick="switchPlayer('s4',${i},this)">
+      ${playerImg(p,'sm')} ${p}
+    </button>`).join('');
+
+  return `<div class="player-select">${btns}</div>${panels}`;
+}
+
+// ══════════════════════════════════════════
+// SECTION 5 – Per-player champion stats
+// ══════════════════════════════════════════
+function buildSection5(enriched) {
+  const players = [...new Set(enriched.map(r=>r.summoner_name))].sort();
+
+  const panels = players.map((p,pi) => {
+    const pRows = enriched.filter(r=>r.summoner_name===p);
+    const byChamp = groupBy(pRows, 'champion');
+    const data = Object.entries(byChamp)
+      .filter(([n])=>n&&n!=='null')
+      .map(([name,rows])=>({
+        name, wr:winRate(rows), picks:rows.length,
+        wins:rows.filter(r=>r.did_win).length, pr:rows.length/pRows.length
+      })).sort((a,b)=>b.wr-a.wr||b.picks-a.picks);
+
+    const byWR = `<div class="mini-list">${data.map((d,i)=>`
+      <div class="mini-row ${rankCls(i)}">
+        <span class="mini-pos">${i+1}</span>
+        ${champImg(d.name,'champ sm')}
+        <span class="mini-name">${d.name}</span>
+        <span class="mini-val">${pct(d.wr)}</span>
+        <span class="mini-sub">${d.wins}W/${d.picks-d.wins}L</span>
+      </div>`).join('')}</div>`;
+
+    const byPick = `<div class="mini-list">${[...data].sort((a,b)=>b.picks-a.picks).map((d,i)=>`
+      <div class="mini-row ${rankCls(i)}">
+        <span class="mini-pos">${i+1}</span>
+        ${champImg(d.name,'champ sm')}
+        <span class="mini-name">${d.name}</span>
+        <span class="mini-val">${d.picks}픽</span>
+        <span class="mini-sub">${pct(d.pr)}</span>
+      </div>`).join('')}</div>`;
+
+    return `<div class="player-content ${pi===0?'active':''}" id="s5-${pi}">
+      <div class="two-col">
+        <div class="sub-panel"><h3>챔피언별 승률</h3>${data.length?byWR:'<div class="empty">데이터 없음</div>'}</div>
+        <div class="sub-panel"><h3>챔피언별 픽률</h3>${data.length?byPick:'<div class="empty">데이터 없음</div>'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const btns = players.map((p,i)=>
+    `<button class="player-btn ${i===0?'active':''}" onclick="switchPlayer('s5',${i},this)">
+      ${playerImg(p,'sm')} ${p}
+    </button>`).join('');
+
+  return `<div class="player-select">${btns}</div>${panels}`;
+}
+
+// ══════════════════════════════════════════
+// SECTION 6 – Player KDA
+// ══════════════════════════════════════════
+function buildSection6(enriched) {
+  const byPlayer = groupBy(enriched, 'summoner_name');
+  const data = Object.entries(byPlayer).map(([name,rows]) => {
+    const k=rows.reduce((s,r)=>s+r.kills,0),d=rows.reduce((s,r)=>s+r.deaths,0),a=rows.reduce((s,r)=>s+r.assists,0);
+    return { name, kda:d===0?(k+a):(k+a)/d, k,d,a, games:rows.length,
+      avgK:k/rows.length, avgD:d/rows.length, avgA:a/rows.length };
+  }).sort((a,b)=>b.kda-a.kda);
+  const maxKDA = Math.max(...data.map(d=>d.kda));
+
+  return `<div class="rank-list">${data.map((d,i)=>`
+    <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr 110px">
+      <div class="rank-pos">${i+1}</div>
+      ${playerImg(d.name)}
+      <div>
+        <div class="rank-name">${d.name}</div>
+        <div class="rank-meta">평균 ${fix2(d.avgK)}K / ${fix2(d.avgD)}D / ${fix2(d.avgA)}A · ${d.games}게임</div>
+      </div>
+      <div>
+        <div class="rank-stat">${fix2(d.kda)}</div>
+        <div class="rank-sub">KDA</div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill kda" style="width:${(d.kda/maxKDA*100).toFixed(1)}%"></div></div>
+    </div>`).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// SECTION 7 – Champion pool size
+// ══════════════════════════════════════════
+function buildSection7(enriched) {
+  const byPlayer = groupBy(enriched, 'summoner_name');
+  const data = Object.entries(byPlayer).map(([name,rows]) => {
+    const champs = [...new Set(rows.map(r=>r.champion).filter(c=>c&&c!=='null'))].sort();
+    return { name, count:champs.size||champs.length, games:rows.length, champs };
+  }).sort((a,b)=>b.count-a.count||b.games-a.games);
+  const maxC = Math.max(...data.map(d=>d.count));
+
+  return `<div class="rank-list">${data.map((d,i)=>`
+    <div class="rank-card ${rankCls(i)}" style="grid-template-columns:36px 40px 1fr auto 80px">
+      <div class="rank-pos">${i+1}</div>
+      ${playerImg(d.name)}
+      <div>
+        <div class="rank-name">${d.name}</div>
+        <div class="rank-meta">${d.games}게임</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;max-width:300px">
+        ${d.champs.map(c=>`${champImg(c,'champ sm')}`).join('')}
+      </div>
+      <div>
+        <div class="rank-stat">${d.count}</div>
+        <div class="rank-sub">챔피언 수</div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${(d.count/maxC*100).toFixed(1)}%"></div></div>
+    </div>`).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════
+function switchPlayer(sec, idx, btn) {
+  const parent = btn.closest('.section');
+  parent.querySelectorAll('.player-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  parent.querySelectorAll('.player-content').forEach(p=>p.classList.remove('active'));
+  parent.querySelector(`#${sec}-${idx}`)?.classList.add('active');
+}
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id)?.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+const TABS = [
+  {id:'s1',label:'플레이어 승률'},
+  {id:'s2',label:'챔피언 픽률'},
+  {id:'s3',label:'챔피언 승률'},
+  {id:'s4',label:'팀원별 승률'},
+  {id:'s5',label:'플레이어 챔피언'},
+  {id:'s6',label:'KDA 랭킹'},
+  {id:'s7',label:'챔피언 다양성'},
+];
+const DESCRIPTIONS = [
+  '플레이어 승률 순위','챔피언 픽 수 순위','챔피언 승률 순위',
+  '플레이어별 팀원 승률 순위','플레이어별 챔피언 승률 · 픽률',
+  '플레이어 KDA 순위','플레이어별 플레이 챔피언 수',
+];
+
+async function init() {
+  try {
+    const resp = await fetch('lol_dataset.csv');
+    if (!resp.ok) throw new Error('lol_dataset.csv 파일을 찾을 수 없습니다.');
+    const enriched = processData(parseCSV(await resp.text()));
+
+    document.getElementById('nav').innerHTML = TABS.map((t,i)=>
+      `<button class="tab ${i===0?'active':''}" onclick="switchTab('${t.id}',this)">${t.label}</button>`
+    ).join('');
+
+    const builders = [
+      ()=>buildSection1(enriched), ()=>buildSection2(enriched),
+      ()=>buildSection3(enriched), ()=>buildSection4(enriched),
+      ()=>buildSection5(enriched), ()=>buildSection6(enriched),
+      ()=>buildSection7(enriched),
+    ];
+
+    document.getElementById('sections').innerHTML = TABS.map((t,i)=>`
+      <div class="section ${i===0?'active':''}" id="${t.id}">
+        <div class="sec-title"><div class="num">${i+1}</div>${DESCRIPTIONS[i]}</div>
+        ${builders[i]()}
+      </div>`).join('');
+
+    const gameCount = [...new Set(enriched.map(r=>r.source_file))].length;
+    const playerCount = [...new Set(enriched.map(r=>r.summoner_name))].length;
+    document.getElementById('header-meta').textContent =
+      `${gameCount}게임 · ${playerCount}명 · ${enriched.length}개 전적`;
+    document.getElementById('loading').style.display='none';
+
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `
+      <div style="color:var(--red);font-family:'Cinzel',serif;text-align:center;padding:24px">
+        <div style="font-size:32px;margin-bottom:16px">⚠</div>
+        <div>${e.message}</div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text)">
+          HTML 파일과 같은 폴더에 lol_dataset.csv, champions/, players/ 폴더를 넣고<br>
+          로컬 서버(VS Code Live Server 또는 python -m http.server)에서 열어주세요.
+        </div>
+      </div>`;
+  }
+}
+init();
+</script>
+</body>
+</html>
