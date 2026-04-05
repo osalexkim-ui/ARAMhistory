@@ -1591,9 +1591,9 @@ function _renderCombinedMatchup(champ) {
     </div>`;
 
   const sb = window._combMuSortBy || 'wr';
-  renderMuList(window._matchups,  champ, 'comb-mu-vs-table',     sb, e => e.wr < 0.5, '비대칭 전력', true);
+  renderMuList(window._matchups,  champ, 'comb-mu-vs-table',     sb, e => e.wr <= 0.5, '비대칭 전력', true);
   renderMuList(window._synergies, champ, 'comb-mu-ally-table',   sb);
-  renderMuList(window._matchups,  champ, 'comb-mu-strong-table', sb, e => e.wr > 0.5);
+  renderMuList(window._matchups,  champ, 'comb-mu-strong-table', sb, e => e.wr >= 0.5);
 }
 
 // ══════════════════════════════════════════
