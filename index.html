@@ -177,13 +177,24 @@
 
   /* ── Match history ── */
   .history-list{display:flex;flex-direction:column;gap:10px;}
-  .history-card{display:grid;grid-template-columns:140px minmax(220px,1fr) 240px;gap:10px;align-items:stretch;
+  .history-card{display:flex;flex-direction:column;
     border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:transform .15s,border-color .2s,box-shadow .2s;
-    background:linear-gradient(135deg,rgba(15,25,48,.96) 0%,rgba(20,32,58,.96) 100%);min-height:112px;}
+    background:linear-gradient(135deg,rgba(15,25,48,.96) 0%,rgba(20,32,58,.96) 100%);}
   .history-card:hover{transform:translateX(3px);}
   .history-card.win-focus{border-color:rgba(83,131,232,.65);box-shadow:0 0 0 1px rgba(83,131,232,.16) inset;background:linear-gradient(135deg,rgba(40,63,112,.96) 0%,rgba(34,49,84,.96) 100%);}
   .history-card.lose-focus{border-color:rgba(232,83,101,.7);box-shadow:0 0 0 1px rgba(232,83,101,.16) inset;background:linear-gradient(135deg,rgba(102,51,62,.96) 0%,rgba(82,47,57,.96) 100%);}
-  .history-card.all-mode{grid-template-columns:1fr 1fr;gap:0;min-height:112px;}
+  .history-card-top{display:flex;align-items:stretch;min-height:112px;}
+  .history-card-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:140px minmax(220px,1fr) 240px;gap:10px;align-items:stretch;}
+  .history-card.all-mode .history-card-main{grid-template-columns:1fr 1fr;gap:0;}
+  .history-expand-btn{flex:0 0 32px;background:rgba(0,0,0,.25);border:0;border-left:1px solid rgba(255,255,255,.08);color:var(--gold,#c89b3c);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+  .history-expand-btn:hover{background:rgba(200,155,60,.2);}
+  .history-expand-btn .chev{transition:transform .2s;display:inline-block;line-height:1;}
+  .history-card.expanded .history-expand-btn .chev{transform:rotate(180deg);}
+  .history-card-expand{display:none;border-top:1px solid rgba(255,255,255,.08);padding:12px;background:rgba(0,0,0,.22);}
+  .history-card.expanded .history-card-expand{display:block;}
+  .history-card-expand iframe{display:block;width:100%;height:min(70vh,650px);border:0;background:#0a1428;border-radius:4px;}
+  .history-card-expand .missing{padding:20px;text-align:center;color:#ccc;font-family:Inter,sans-serif;font-size:13px;}
+  .history-card-expand .missing .src{display:block;margin-top:6px;font-size:11px;color:#888;word-break:break-all;}
   .history-side{padding:10px 12px;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;justify-content:center;}
   .history-side.win{background:rgba(83,131,232,.12);}
   .history-side.lose{background:rgba(232,83,101,.12);}
@@ -229,7 +240,7 @@
   .history-overview-team{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
   .history-overview-side.left .history-team-player{grid-template-columns:minmax(0,1fr) 22px;}
   .history-overview-side.left .history-team-name{text-align:right;}
-  @media(max-width:1100px){.history-card{grid-template-columns:130px minmax(180px,1fr) 220px;}}
+  @media(max-width:1100px){.history-card-main{grid-template-columns:130px minmax(180px,1fr) 220px;}}
 
   /* ── Champion combined: table format ── */
   .comb-mobile-search{display:none;}
@@ -251,18 +262,17 @@
     .player-btn{padding:4px;gap:0;}
     main{padding:16px 8px 40px;}
     .history-list{gap:8px;overflow-x:hidden;width:100%;}
-    .history-card{
-      width:100%;
-      min-height:auto;
+    .history-card{width:100%;}
+    .history-card-top{min-height:auto;}
+    .history-card-main{
       gap:8px;
       grid-template-columns:minmax(88px,18vw) minmax(0,1fr) minmax(150px,32vw);
     }
-    .history-card.all-mode{
-      width:100%;
+    .history-card.all-mode .history-card-main{
       grid-template-columns:1fr 1fr;
       gap:0;
-      min-height:auto;
     }
+    .history-expand-btn{flex:0 0 28px;}
     .history-side{
       padding:7px 8px;
     }
@@ -851,7 +861,14 @@ function buildSectionHistory(enriched) {
       `<button class="player-btn" data-player="${encodeURIComponent(p)}" onclick="filterHistoryFromBtn(this)">${playerImg(p,'sm')} <span class="btn-label">${p}</span></button>`
     )).join('');
 
-  return `<div class="player-select" id="history-player-select">${btns}</div><div id="match-history-list"></div>`;
+  const driveLink = `<div class="drive-link-wrap" style="margin:0 0 14px;padding:10px 14px;border:1px solid var(--gold,#c89b3c);border-radius:6px;background:rgba(200,155,60,0.08);font-size:13px;">
+    <a href="https://drive.google.com/drive/folders/1MhEtQNJu8FgrSMkgYySw_0dQHmhtDJCm?usp=sharing" target="_blank" rel="noopener" style="color:var(--gold,#c89b3c);text-decoration:none;font-weight:600;">
+      📂 전적 스크린샷 모음 (Google Drive)
+    </a>
+    <span style="margin-left:8px;color:var(--text,#a0a0a0);">각 전적의 원본 캡처 이미지를 확인하세요.</span>
+  </div>`;
+
+  return `${driveLink}<div class="player-select" id="history-player-select">${btns}</div><div id="match-history-list"></div>`;
 }
 
 function buildHistoryGames(enriched) {
@@ -938,10 +955,20 @@ function renderMatchHistory() {
     const members = [...g.team1, ...g.team2];
     const focused = player ? members.find(m => m.name === player) : null;
 
+    const sourceAttr = encodeURIComponent(g.source_file);
+    const expandBtn = `<button class="history-expand-btn" onclick="toggleMatchExpand(this,event)" aria-label="전적 이미지 열기"><span class="chev">▾</span></button>`;
+    const expandArea = `<div class="history-card-expand" data-source="${sourceAttr}"></div>`;
+
     if (!focused) {
       return `<div class="history-card all-mode">
-        ${renderOverviewSide(g.team1, g.team1Won, 'left', g.display_date, '')}
-        ${renderOverviewSide(g.team2, g.team2Won, 'right', g.display_date, '')}
+        <div class="history-card-top">
+          <div class="history-card-main">
+            ${renderOverviewSide(g.team1, g.team1Won, 'left', g.display_date, '')}
+            ${renderOverviewSide(g.team2, g.team2Won, 'right', g.display_date, '')}
+          </div>
+          ${expandBtn}
+        </div>
+        ${expandArea}
       </div>`;
     }
 
@@ -954,35 +981,66 @@ function renderMatchHistory() {
     const sideSub = `${focused.k}/${focused.d}/${focused.a} · ${kdaRatio}:1 평점`;
 
     return `<div class="history-card ${focusClass}">
-      <div class="history-side ${sideTone}">
-        <div class="history-mode">${sideMode}</div>
-        <div class="history-age">${sideAge}</div>
-        <div class="history-result-main">${leftTitle}</div>
-        <div class="history-result-sub">${sideSub}</div>
-      </div>
-      <div class="history-center">
-        <div class="history-champ-wrap">
-          <div class="history-champ-box">
-            ${champImg(focused.champion, 'champ')}
+      <div class="history-card-top">
+        <div class="history-card-main">
+          <div class="history-side ${sideTone}">
+            <div class="history-mode">${sideMode}</div>
+            <div class="history-age">${sideAge}</div>
+            <div class="history-result-main">${leftTitle}</div>
+            <div class="history-result-sub">${sideSub}</div>
+          </div>
+          <div class="history-center">
+            <div class="history-champ-wrap">
+              <div class="history-champ-box">
+                ${champImg(focused.champion, 'champ')}
+              </div>
+            </div>
+            <div class="history-summary">
+              <div class="history-player-name">${focused.name}</div>
+              <div class="history-kda">${focused.k} / <span class="history-deaths">${focused.d}</span> / ${focused.a}</div>
+              <div class="history-ratio">${kdaRatio}:1 평점</div>
+            </div>
+          </div>
+          <div class="history-right">
+            <div class="history-team-col">
+              <div class="history-team-list">${renderTeam(g.team1, player)}</div>
+            </div>
+            <div class="history-team-col">
+              <div class="history-team-list">${renderTeam(g.team2, player)}</div>
+            </div>
           </div>
         </div>
-        <div class="history-summary">
-          <div class="history-player-name">${focused.name}</div>
-          <div class="history-kda">${focused.k} / <span class="history-deaths">${focused.d}</span> / ${focused.a}</div>
-          <div class="history-ratio">${kdaRatio}:1 평점</div>
-        </div>
+        ${expandBtn}
       </div>
-      <div class="history-right">
-        <div class="history-team-col">
-          <div class="history-team-list">${renderTeam(g.team1, player)}</div>
-        </div>
-        <div class="history-team-col">
-          <div class="history-team-list">${renderTeam(g.team2, player)}</div>
-        </div>
-      </div>
+      ${expandArea}
     </div>`;
   }).join('')}</div>`;
 }
+function toggleMatchExpand(btn, event) {
+  if (event) event.stopPropagation();
+  const card = btn.closest('.history-card');
+  if (!card) return;
+  const area = card.querySelector('.history-card-expand');
+  if (!area) return;
+
+  const willExpand = !card.classList.contains('expanded');
+  card.classList.toggle('expanded');
+
+  if (willExpand && !area.dataset.loaded) {
+    const sourceFile = decodeURIComponent(area.dataset.source || '');
+    const id = (window._driveMap || {})[sourceFile];
+    if (id) {
+      area.innerHTML = `<iframe src="https://drive.google.com/file/d/${id}/preview" allowfullscreen></iframe>`;
+    } else {
+      area.innerHTML = `<div class="missing">
+        <div>이 전적의 스크린샷을 찾을 수 없습니다.</div>
+        <span class="src">source_file: ${sourceFile}</span>
+      </div>`;
+    }
+    area.dataset.loaded = '1';
+  }
+}
+
 // ══════════════════════════════════════════
 // MATCHUP DATA HELPER
 // ══════════════════════════════════════════
@@ -1676,6 +1734,10 @@ async function init() {
     const resp = await fetch('lol_dataset.csv');
     if (!resp.ok) throw new Error('lol_dataset.csv 파일을 찾을 수 없습니다.');
     const enriched = processData(parseCSV(await resp.text()));
+
+    window._driveMap = await fetch('drive_files.json')
+      .then(r => r.ok ? r.json() : {})
+      .catch(() => ({}));
 
     document.getElementById('nav').innerHTML =
       `<div style="display:flex;margin:0 auto">${TABS.map((t,i)=>
