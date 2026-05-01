@@ -502,7 +502,8 @@ function processData(rows) {
   return rows.map(r => {
     const team1Wins = games[r.source_file].result === 'WIN';
     const did_win = r.team_id === '1' ? team1Wins : !team1Wins;
-    return { ...r, did_win, kills:+r.kills, deaths:+r.deaths, assists:+r.assists };
+    const has_kda = r.kills !== '' && r.deaths !== '' && r.assists !== '';
+    return { ...r, did_win, has_kda, kills:+r.kills, deaths:+r.deaths, assists:+r.assists };
   });
 }
 
@@ -788,7 +789,7 @@ function buildSection5(enriched) {
 // SECTION 6 – Player KDA
 // ══════════════════════════════════════════
 function buildSection6(enriched) {
-  const byPlayer = groupBy(enriched, 'summoner_name');
+  const byPlayer = groupBy(enriched.filter(r=>r.has_kda), 'summoner_name');
   const data = Object.entries(byPlayer).map(([name,rows]) => {
     const k=rows.reduce((s,r)=>s+r.kills,0),d=rows.reduce((s,r)=>s+r.deaths,0),a=rows.reduce((s,r)=>s+r.assists,0);
     return { name, kda:d===0?(k+a):(k+a)/d, k,d,a, games:rows.length,
